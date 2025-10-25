@@ -1,13 +1,15 @@
 pipeline {
   agent any
   options { timestamps() }
-  environment { IMAGE = "pyspark-etl:%BUILD_NUMBER%" }
 
   stages {
     stage('Checkout') { steps { checkout scm } }
 
     stage('Build Docker Image') {
-      steps { bat 'docker build -t %IMAGE% .' }
+      steps {
+        // Groovy interpola ${env.BUILD_NUMBER} antes de llamar a cmd
+        bat "docker build -t pyspark-etl:${env.BUILD_NUMBER} ."
+      }
     }
 
     stage('Prepare I/O') {
@@ -21,13 +23,13 @@ pipeline {
 
     stage('Run ETL') {
       steps {
-        bat '''
+        bat """
           docker run --rm ^
             -v "%WORKSPACE%\\input:/app/input" ^
             -v "%WORKSPACE%\\output:/app/output" ^
-            %IMAGE% ^
+            pyspark-etl:${env.BUILD_NUMBER} ^
             python /app/etl.py --input-dir /app/input --output-dir /app/output
-        '''
+        """
       }
     }
 
